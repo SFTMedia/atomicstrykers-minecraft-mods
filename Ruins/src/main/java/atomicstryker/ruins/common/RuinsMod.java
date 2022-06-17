@@ -27,6 +27,7 @@ import net.minecraftforge.event.entity.EntityEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent.BreakSpeed;
 import net.minecraftforge.event.world.BlockEvent.BreakEvent;
 import net.minecraftforge.event.world.WorldEvent;
+import net.minecraftforge.event.world.ChunkEvent;
 import net.minecraftforge.fml.client.FMLClientHandler;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.IWorldGenerator;
@@ -131,42 +132,32 @@ public class RuinsMod
     }
 
     @SubscribeEvent
-    public void onEntityEnteringChunk(EntityEvent.EnteringChunk event)
-    {
-        if (event.getEntity() instanceof EntityPlayer && !event.getEntity().world.isRemote)
-        {
-            TileEntityCommandBlock tecb;
-            ArrayList<TileEntityCommandBlock> tecblist = new ArrayList<>();
+    public void onChunkLoad(ChunkEvent.Load event) {
+        TileEntityCommandBlock tecb;
+        ArrayList<TileEntityCommandBlock> tecblist = new ArrayList<>();
 
-            for (int xoffset = -4; xoffset <= 4; xoffset++)
+        for (TileEntity teo : event.getChunk().getTileEntityMap().values())
+        {
+            if (teo instanceof TileEntityCommandBlock)
             {
-                for (int zoffset = -4; zoffset <= 4; zoffset++)
+                tecb = (TileEntityCommandBlock) teo;
+                if (tecb.getCommandBlockLogic().getCommand().startsWith("RUINSTRIGGER "))
                 {
-                    for (TileEntity teo : event.getEntity().world.getChunkFromChunkCoords(event.getNewChunkX() + xoffset, event.getNewChunkZ() + zoffset).getTileEntityMap().values())
-                    {
-                        if (teo instanceof TileEntityCommandBlock)
-                        {
-                            tecb = (TileEntityCommandBlock) teo;
-                            if (tecb.getCommandBlockLogic().getCommand().startsWith("RUINSTRIGGER "))
-                            {
-                                // strip prefix from command
-                                tecb.getCommandBlockLogic().setCommand((tecb.getCommandBlockLogic().getCommand()).substring(13));
-                                tecblist.add(tecb);
-                            }
-                        }
-                    }
+                    // strip prefix from command
+                    tecb.getCommandBlockLogic().setCommand((tecb.getCommandBlockLogic().getCommand()).substring(13));
+                    tecblist.add(tecb);
                 }
             }
+        }
 
-            for (TileEntityCommandBlock tecb2 : tecblist)
-            {
-                // call command block execution
-                tecb2.getCommandBlockLogic().trigger(event.getEntity().world);
-                // kill block
-                BlockPos pos = tecb2.getPos();
-                System.out.printf("Ruins executed and killed Command Block at [%s]\n", pos);
-                event.getEntity().world.setBlockToAir(pos);
-            }
+        for (TileEntityCommandBlock tecb2 : tecblist)
+        {
+            // call command block execution
+            tecb2.getCommandBlockLogic().trigger(event.getWorld());
+            // kill block
+            BlockPos pos = tecb2.getPos();
+            System.out.printf("Ruins executed and killed Command Block at [%s]\n", pos);
+            event.getWorld().setBlockToAir(pos);
         }
     }
 
